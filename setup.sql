@@ -13,13 +13,16 @@ create table if not exists participants (
   created_at timestamptz default now()
 );
 
--- The UNIQUE on golfer_id enforces sniping: each golfer can only be drafted once
+-- Any entrant can pick any golfer; duplicates between entrants are fine.
 create table if not exists picks (
   id uuid primary key default gen_random_uuid(),
   participant_id uuid not null references participants(id) on delete cascade,
-  golfer_id integer not null unique,
+  golfer_id integer not null,
   created_at timestamptz default now()
 );
+
+-- If the table was created earlier with the old sniping UNIQUE, drop it.
+alter table picks drop constraint if exists picks_golfer_id_key;
 
 create table if not exists results (
   golfer_id integer primary key,
@@ -53,6 +56,14 @@ alter table participants enable row level security;
 alter table picks enable row level security;
 alter table results enable row level security;
 alter table settings enable row level security;
+
+-- Table-level grants (Supabase auto-grants when you create via the dashboard,
+-- but NOT when tables are created via raw SQL — so we do it explicitly here).
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on participants to anon, authenticated;
+grant select, insert, update, delete on picks        to anon, authenticated;
+grant select, insert, update, delete on results      to anon, authenticated;
+grant select, insert, update, delete on settings     to anon, authenticated;
 
 drop policy if exists "read participants" on participants;
 drop policy if exists "read picks" on picks;

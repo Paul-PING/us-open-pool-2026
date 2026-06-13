@@ -61,9 +61,11 @@ async function refreshAll() {
 }
 
 function golfer(id) { return golfers.find(g => g.id === id); }
-function pickedBy(golferId) {
-  const pk = picks.find(p => p.golfer_id === golferId);
-  return pk ? participants.find(p => p.id === pk.participant_id) : null;
+function pickersOf(golferId) {
+  return picks
+    .filter(p => p.golfer_id === golferId)
+    .map(p => participants.find(x => x.id === p.participant_id)?.name)
+    .filter(Boolean);
 }
 
 async function tryLogin() {
@@ -159,7 +161,8 @@ function loginView() {
 }
 
 function adminView() {
-  const drafted = picks.map(pk => golfer(pk.golfer_id)).filter(Boolean);
+  const draftedIds = Array.from(new Set(picks.map(pk => pk.golfer_id)));
+  const drafted = draftedIds.map(id => golfer(id)).filter(Boolean);
   drafted.sort((a, b) => b.cost - a.cost || a.name.localeCompare(b.name));
 
   const cutoffLocal = settings.draft_cutoff
@@ -167,17 +170,17 @@ function adminView() {
     : "";
 
   const resultsRows = drafted.length === 0
-    ? `<p class="text-gray-500 text-sm italic">No golfers have been drafted yet.</p>`
+    ? `<p class="text-gray-500 text-sm italic">No golfers have been picked yet.</p>`
     : drafted.map(g => {
         const r = results.find(x => x.golfer_id === g.id);
-        const by = pickedBy(g.id);
+        const by = pickersOf(g.id);
         return `
           <div class="flex items-center justify-between bg-gray-900 rounded-lg px-3 py-2 border border-gray-800">
             <div class="min-w-0">
               <p class="text-sm font-semibold truncate">
                 <span class="text-xs text-gray-500 mr-1">${g.country}</span>${escapeHtml(g.name)}
               </p>
-              <p class="text-xs text-gray-500">$${g.cost}M · drafted by ${escapeHtml(by?.name || "?")}</p>
+              <p class="text-xs text-gray-500">$${g.cost}M · picked by ${escapeHtml(by.join(", ") || "?")}</p>
             </div>
             <select onchange="onResultChange(${g.id}, this)"
               class="bg-gray-800 text-white text-sm rounded-lg px-2 py-1 border border-gray-700 ml-3 flex-shrink-0">

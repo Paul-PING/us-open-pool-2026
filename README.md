@@ -1,6 +1,6 @@
 # 2026 U.S. Open Pool
 
-A salary-cap fantasy game for the 2026 U.S. Open at Shinnecock Hills (June 18–21). Family members draft a roster of 5 golfers within a $100M cap; each golfer is taken by only one entrant ("sniping" draft). Scores update live during the tournament.
+A salary-cap fantasy game for the 2026 U.S. Open at Shinnecock Hills (June 18–21). Family members pick a roster of 5 golfers within a $100M cap — anyone can pick any golfer, duplicates between entrants are fine. Scores update live during the tournament.
 
 **Stack:** static HTML/CSS/JS hosted on GitHub Pages, with Supabase (free tier) as the database. No build step.
 
@@ -65,4 +65,4 @@ Share that link with your family. The admin page is at `…/admin.html`.
 
 - The Supabase anon key in `config.js` is *intended* to be public — it can only do what Row Level Security in `setup.sql` allows.
 - Sign-in is name + passcode. Each entrant picks any passcode they like the first time. No emails, no accounts. Family-pool-grade security.
-- Real-time updates: when someone drafts a golfer, everyone else's page updates within a second or two.
+- Real-time updates: when someone picks a golfer, everyone else's page updates within a second or two.

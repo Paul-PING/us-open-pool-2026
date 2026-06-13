@@ -120,11 +120,6 @@ function scoreOf(participantId) {
   return picks.filter(p => p.participant_id === participantId)
     .reduce((s, p) => s + (pointsFor(p.golfer_id) || 0), 0);
 }
-function pickedBy(golferId) {
-  const pk = picks.find(p => p.golfer_id === golferId);
-  if (!pk) return null;
-  return participants.find(p => p.id === pk.participant_id);
-}
 function isClosed() {
   const cutoff = settings.draft_cutoff;
   if (!cutoff) return false;
@@ -175,16 +170,10 @@ async function draftGolfer(golferId) {
   if (!g) return;
   if (myPicks().length >= ROSTER_SIZE) return alert(`You already have ${ROSTER_SIZE} picks.`);
   if (mySpend() + g.cost > SALARY_CAP) return alert(`Too expensive — you only have $${SALARY_CAP - mySpend()}M left.`);
-  if (picks.some(p => p.golfer_id === golferId)) return alert(`${g.name} has already been drafted.`);
+  if (myPicks().some(p => p.golfer_id === golferId)) return alert(`${g.name} is already in your roster.`);
 
   const { error } = await supa.from("picks").insert({ participant_id: me.id, golfer_id: golferId });
-  if (error) {
-    if (error.code === "23505") {
-      alert(`${g.name} was just drafted by someone else — beaten to it.`);
-    } else {
-      alert("Could not draft: " + error.message);
-    }
-  }
+  if (error) alert("Could not pick: " + error.message);
   await refreshAll();
   render();
 }
@@ -300,7 +289,6 @@ function renderDraftTab() {
   const mine = myPicks();
   const spent = mySpend();
   const remaining = SALARY_CAP - spent;
-  const allDraftedIds = new Set(picks.map(p => p.golfer_id));
 
   let list = golfers;
   if (filterTier !== 0) list = list.filter(g => g.tier === filterTier);
@@ -359,19 +347,17 @@ function renderDraftTab() {
   const playersHtml = list.length === 0
     ? `<p class="text-gray-500 text-sm italic text-center py-8">No golfers match.</p>`
     : `<div class="flex flex-col gap-2">${list.map(g => {
-        const drafted = allDraftedIds.has(g.id);
         const mineHere = mine.some(p => p.golfer_id === g.id);
         const affordable = g.cost <= remaining;
-        const draftedBy = drafted && !mineHere ? pickedBy(g.id) : null;
         return `
-          <div class="rounded-xl border px-3 py-2.5 flex items-center justify-between tier-${g.tier} ${drafted && !mineHere ? "opacity-40" : ""}">
+          <div class="rounded-xl border px-3 py-2.5 flex items-center justify-between tier-${g.tier}">
             <div class="flex items-center gap-3 min-w-0">
               <span class="text-xs font-bold px-2 py-0.5 rounded-full tier-badge-${g.tier} flex-shrink-0">T${g.tier}</span>
               <div class="min-w-0">
                 <p class="text-sm font-semibold text-gray-900 truncate">
                   <span class="text-xs text-gray-500 mr-1">${g.country}</span>${escapeHtml(g.name)}
                 </p>
-                <p class="text-xs text-gray-500">${g.odds} odds${draftedBy ? ` · taken by ${escapeHtml(draftedBy.name)}` : ""}</p>
+                <p class="text-xs text-gray-500">${g.odds} odds</p>
               </div>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0 ml-2">
@@ -379,15 +365,13 @@ function renderDraftTab() {
               ${mineHere
                 ? (closed ? `<span class="text-xs text-green-700 font-semibold px-2 py-1">Mine</span>` :
                    `<button onclick="dropGolfer(${g.id})" class="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-1.5 rounded-lg font-semibold">Drop</button>`)
-                : drafted
-                  ? `<span class="text-xs text-gray-400 italic px-2">Taken</span>`
-                  : closed
-                    ? `<span class="text-xs text-gray-400 italic px-2">Closed</span>`
-                    : !affordable
-                      ? `<button disabled class="text-xs px-3 py-1.5 rounded-lg bg-gray-200 text-gray-400 cursor-not-allowed">$$</button>`
-                      : mine.length >= ROSTER_SIZE
-                        ? `<button disabled class="text-xs px-3 py-1.5 rounded-lg bg-gray-200 text-gray-400 cursor-not-allowed">Full</button>`
-                        : `<button onclick="draftGolfer(${g.id})" class="text-xs px-3 py-1.5 rounded-lg bg-gray-900 hover:bg-gray-700 text-white font-semibold">Draft</button>`}
+                : closed
+                  ? `<span class="text-xs text-gray-400 italic px-2">Closed</span>`
+                  : !affordable
+                    ? `<button disabled class="text-xs px-3 py-1.5 rounded-lg bg-gray-200 text-gray-400 cursor-not-allowed">$$</button>`
+                    : mine.length >= ROSTER_SIZE
+                      ? `<button disabled class="text-xs px-3 py-1.5 rounded-lg bg-gray-200 text-gray-400 cursor-not-allowed">Full</button>`
+                      : `<button onclick="draftGolfer(${g.id})" class="text-xs px-3 py-1.5 rounded-lg bg-gray-900 hover:bg-gray-700 text-white font-semibold">Pick</button>`}
             </div>
           </div>`;
       }).join("")}</div>`;
@@ -453,8 +437,8 @@ function renderScoringTab() {
       <h2 class="font-semibold text-sm mb-2 text-gray-300">Rules</h2>
       <ul class="text-sm text-gray-400 space-y-2 list-disc pl-5">
         <li>Each entrant builds a roster of <span class="text-white">${ROSTER_SIZE} golfers</span> within a <span class="text-white">$${SALARY_CAP}M</span> salary cap.</li>
-        <li>Each golfer can only be drafted by <span class="text-white">one</span> entrant — first click wins.</li>
-        <li>The draft locks at the cutoff time shown at the top of the page.</li>
+        <li>Pick whichever golfers you like — two entrants can pick the same golfer.</li>
+        <li>Picks lock at the cutoff time shown at the top of the page.</li>
         <li>Each golfer scores points based on their final finishing position.</li>
         <li>Your total = sum of your 5 golfers' points. Highest wins.</li>
       </ul>
