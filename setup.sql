@@ -75,6 +75,8 @@ drop policy if exists "delete picks" on picks;
 drop policy if exists "insert results" on results;
 drop policy if exists "update results" on results;
 drop policy if exists "delete results" on results;
+drop policy if exists "insert settings" on settings;
+drop policy if exists "update settings" on settings;
 
 create policy "read participants" on participants for select using (true);
 create policy "read picks" on picks for select using (true);
@@ -88,6 +90,9 @@ create policy "delete picks" on picks for delete using (true);
 create policy "insert results" on results for insert with check (true);
 create policy "update results" on results for update using (true);
 create policy "delete results" on results for delete using (true);
+
+create policy "insert settings" on settings for insert with check (true);
+create policy "update settings" on settings for update using (true);
 
 -- ──────────────────────────────────────────────────────────────────────────────
 -- Realtime: optional, but lets the leaderboard update live as picks come in.

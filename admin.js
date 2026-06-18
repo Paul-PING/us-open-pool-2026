@@ -166,7 +166,7 @@ function adminView() {
   drafted.sort((a, b) => b.cost - a.cost || a.name.localeCompare(b.name));
 
   const cutoffLocal = settings.draft_cutoff
-    ? new Date(settings.draft_cutoff).toISOString().slice(0, 16)
+    ? toLocalInputValue(new Date(settings.draft_cutoff))
     : "";
 
   const resultsRows = drafted.length === 0
@@ -245,6 +245,14 @@ function onResultChange(golferId, sel) {
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// Format a Date as a "YYYY-MM-DDTHH:MM" string in the browser's local timezone,
+// suitable for a <input type="datetime-local"> value. Avoids the .toISOString()
+// trap, which returns UTC digits that the input would mis-interpret as local.
+function toLocalInputValue(d) {
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 window.tryLogin = tryLogin;
